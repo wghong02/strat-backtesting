@@ -59,7 +59,7 @@ def add_strategy(n_clicks):
                 dcc.Input(id='input-loss', type='number', value=0),
                 html.Button('- Loss', id='btn-loss', n_clicks=0)
             ]),
-            html.Div(id='pnl', children='PnL: 0'),
+            html.Div(id='pnl', children='Total PnL: 0'),
             html.Div(id='winrate', children='Win Rate: 0%')
         ]
     
@@ -74,14 +74,14 @@ def add_strategy(n_clicks):
 def update_pnl(n_clicks_gain, n_clicks_loss, gain, loss, pnl):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return "PnL: 0"
+        return "Total PnL: 0"
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         current_pnl = int(pnl.split(': ')[1])
         if button_id == 'btn-gain':
-            return f"PnL: {current_pnl + gain}"
+            return f"Total PnL: {current_pnl + gain}"
         elif button_id == 'btn-loss':
-            return f"PnL: {current_pnl - loss}"
+            return f"Total PnL: {current_pnl - loss}"
 
 @app.callback(
     Output('winrate', 'children'),
@@ -96,10 +96,7 @@ def update_winrate(n_clicks_gain, n_clicks_loss, winrate):
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         total_trades = n_clicks_gain + n_clicks_loss
-        if button_id == 'btn-gain':
-            wins = n_clicks_gain
-        else:
-            wins = n_clicks_gain - 1
+        wins = n_clicks_gain
         winrate = (wins / total_trades) * 100
         return f"Win Rate: {winrate:.2f}%"
 
