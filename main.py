@@ -13,16 +13,12 @@ app.title = "Backtesting Tracker"
 server = app.server
 
 app.layout = html.Div([
-    html.H1("Hello, Dash!"),
-    html.Div("Dash: A web application framework for Python."),
+    html.H1("Backtesting Tracker"),
     html.Div([
-        html.H3("Menu"),
-        html.Button('Option 1', id='btn-1', n_clicks=0),
-        html.Button('Option 2', id='btn-2', n_clicks=0),
-        html.Button('Option 3', id='btn-3', n_clicks=0),
-        html.Button('Option 4', id='btn-4', n_clicks=0),
-        html.Button('Option 5', id='btn-5', n_clicks=0),
-    ], style={'width': '20%', 'display': 'inline-block'}),
+        html.Button('Home', id='btn-1', n_clicks=0),
+        html.Button('Strategies', id='btn-2', n_clicks=0),
+        html.Button('History', id='btn-3', n_clicks=0),
+    ], style={'width': '120%', 'display': 'inline-block'}),
     html.Div(id='content', style={'width': '80%', 'display': 'inline-block'})
 ])
 
@@ -30,16 +26,14 @@ app.layout = html.Div([
     Output('content', 'children'),
     [Input('btn-1', 'n_clicks'),
      Input('btn-2', 'n_clicks'),
-     Input('btn-3', 'n_clicks'),
-     Input('btn-4', 'n_clicks'),
-     Input('btn-5', 'n_clicks')]
+     Input('btn-3', 'n_clicks')]
 )
-def update_content(btn1, btn2, btn3, btn4, btn5):
+def update_content(btn1, btn2, btn3):
     ctx = dash.callback_context
-    if not ctx.triggered:
-        return "Select an option"
-    else:
+    if ctx.triggered:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        if button_id == 'btn-2':
+            return html.Button('Add New Strategy', id='add-strategy', n_clicks=0)
         return f"You selected {button_id}"
 
 if __name__ == '__main__':
