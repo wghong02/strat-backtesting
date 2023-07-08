@@ -4,6 +4,8 @@ from dash import html
 from dash.dependencies import Input, Output
 import pandas as pd
 
+import functions
+
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
 )
