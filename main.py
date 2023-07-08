@@ -5,7 +5,7 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 
 app = dash.Dash(
-    __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
+    __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}], suppress_callback_exceptions=True,
 )
 
 app.title = "Backtesting Tracker"
@@ -59,7 +59,8 @@ def add_strategy(n_clicks):
                 dcc.Input(id='input-loss', type='number', value=0),
                 html.Button('- Loss', id='btn-loss', n_clicks=0)
             ]),
-            html.Div(id='pnl', children='PnL: 0')
+            html.Div(id='pnl', children='PnL: 0'),
+            html.Div(id='winrate', children='Win Rate: 0%')
         ]
     
 @app.callback(
@@ -82,6 +83,25 @@ def update_pnl(n_clicks_gain, n_clicks_loss, gain, loss, pnl):
         elif button_id == 'btn-loss':
             return f"PnL: {current_pnl - loss}"
 
+@app.callback(
+    Output('winrate', 'children'),
+    [Input('btn-gain', 'n_clicks'),
+     Input('btn-loss', 'n_clicks')],
+    [State('winrate', 'children')]
+)
+def update_winrate(n_clicks_gain, n_clicks_loss, winrate):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return "Win Rate: 0%"
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        total_trades = n_clicks_gain + n_clicks_loss
+        if button_id == 'btn-gain':
+            wins = n_clicks_gain
+        else:
+            wins = n_clicks_gain - 1
+        winrate = (wins / total_trades) * 100
+        return f"Win Rate: {winrate:.2f}%"
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='127.0.0.1', port=8080)
