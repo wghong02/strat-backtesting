@@ -1,8 +1,13 @@
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
+import pandas as pd
 
-app = dash.Dash(__name__)
+app = dash.Dash(
+    __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}],
+)
+
+app.title = "Backtesting Tracker"
 
 app.layout = html.Div([
     html.H1("Hello, Dash!"),
@@ -10,4 +15,4 @@ app.layout = html.Div([
 ])
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, host='127.0.0.1', port=8080)
