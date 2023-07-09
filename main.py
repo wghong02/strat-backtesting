@@ -49,6 +49,9 @@ def update_content(btn1, btn2, btn3):
 )
 def add_strategy(n_clicks):
     if n_clicks > 0:
+        # Reset the CSV file
+        pnl_history = pd.DataFrame({'PnL': [0]})
+        pnl_history.to_csv('pnl_history.csv', index=False)
         return [
             html.Div([
                 html.Div('Gain', style={'color': 'green'}),
