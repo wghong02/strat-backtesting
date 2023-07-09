@@ -77,7 +77,7 @@ def add_strategy(n_clicks):
 def update_pnl(n_clicks_gain, n_clicks_loss, gain, loss, pnl):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return "PnL: 0", {'data': [], 'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}}
+        return "Total PnL: 0", {'data': [], 'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}}
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         current_pnl = int(pnl.split(': ')[1])
@@ -87,7 +87,7 @@ def update_pnl(n_clicks_gain, n_clicks_loss, gain, loss, pnl):
             new_pnl = current_pnl - loss
         if os.path.exists('pnl_history.csv'):
             pnl_history = pd.read_csv('pnl_history.csv')
-            new_row = pd.DataFrame({'PnL': [new_pnl]})
+            new_row = pd.DataFrame({'Total PnL': [new_pnl]})
             pnl_history = pd.concat([pnl_history, new_row], ignore_index=True)
         else:
             pnl_history = pd.DataFrame({'PnL': [new_pnl]})
