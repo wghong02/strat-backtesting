@@ -3,6 +3,7 @@ from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output, State
 import pandas as pd
+import os
 
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}], suppress_callback_exceptions=True,
@@ -66,7 +67,7 @@ def add_strategy(n_clicks):
         ]
     
 @app.callback(
-    Output('pnl', 'children'),
+    [Output('pnl', 'children'), Output('pnl-graph', 'figure')],
     [Input('btn-gain', 'n_clicks'),
      Input('btn-loss', 'n_clicks')],
     [State('input-gain', 'value'),
@@ -76,14 +77,25 @@ def add_strategy(n_clicks):
 def update_pnl(n_clicks_gain, n_clicks_loss, gain, loss, pnl):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return "Total PnL: 0"
+        return "PnL: 0", {'data': [], 'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}}
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         current_pnl = int(pnl.split(': ')[1])
         if button_id == 'btn-gain':
-            return f"Total PnL: {current_pnl + gain}"
+            new_pnl = current_pnl + gain
         elif button_id == 'btn-loss':
-            return f"Total PnL: {current_pnl - loss}"
+            new_pnl = current_pnl - loss
+        if os.path.exists('pnl_history.csv'):
+            pnl_history = pd.read_csv('pnl_history.csv')
+            new_row = pd.DataFrame({'PnL': [new_pnl]})
+            pnl_history = pd.concat([pnl_history, new_row], ignore_index=True)
+        else:
+            pnl_history = pd.DataFrame({'PnL': [new_pnl]})
+        pnl_history.to_csv('pnl_history.csv', index=False)
+        return f"PnL: {new_pnl}", {
+            'data': [{'x': pnl_history.index, 'y': pnl_history['PnL'], 'type': 'scatter', 'mode': 'lines+markers'}],
+            'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}
+        }
 
 @app.callback(
     Output('winrate', 'children'),
@@ -116,21 +128,6 @@ def update_total(n_clicks_gain, n_clicks_loss, winrate):
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         total_trades = n_clicks_gain + n_clicks_loss
         return f"Total trades: {total_trades}"
-
-
-@app.callback(
-    Output('pnl-graph', 'figure'),
-    [Input('btn-gain', 'n_clicks'),
-     Input('btn-loss', 'n_clicks')],
-    [State('pnl', 'children')]
-)
-def update_graph(n_clicks_gain, n_clicks_loss, pnl):
-    total_trades = n_clicks_gain + n_clicks_loss
-    current_pnl = int(pnl.split(': ')[1])
-    return {
-        'data': [{'x': list(range(total_trades)), 'y': [current_pnl]*total_trades, 'type': 'scatter', 'mode': 'lines+markers'}],
-        'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}
-    }
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='127.0.0.1', port=8080)
