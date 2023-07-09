@@ -21,7 +21,7 @@ app.layout = html.Div([
         html.Button('History', id='option-3', n_clicks=0),
     ], style={'width': '20%', 'display': 'inline-block', 'vertical-align': 'top'}),
     html.Div(id='content', style={'width': '80%', 'display': 'inline-block'}),
-    dcc.Store(id='store', data={'pnl': 0, 'trades': 0})
+    dcc.Store(id='store', data={'pnl': 0, 'trades': 0, 'wins': 0})
 ])
 
 # click on menu options
@@ -48,10 +48,9 @@ def update_content(option1, option2, option3):
 
 # to add new strategies
 @app.callback(
-    Output('strategy-content', 'children'),
+    [Output('strategy-content', 'children'), Output('store', 'data')],
     [Input('add-strategy', 'n_clicks')]
 )
-
 def add_strategy(n_clicks):
     if n_clicks > 0:
         # Reset the CSV file
@@ -69,10 +68,10 @@ def add_strategy(n_clicks):
                 html.Button('- Loss', id='btn-loss', n_clicks=0)
             ]),
             html.Div(id='pnl', children='Total PnL: 0'),
-            html.Div(id='total_trades', children='Total trades: 0'),
             html.Div(id='winrate', children='Win Rate: 0%'),
             dcc.Graph(id='pnl-graph', config={'displayModeBar': True, 'scrollZoom': True})
-        ]
+        ], {'pnl': 0, 'trades': 0, 'wins': 0}
+
 
 # update pnl    
 @app.callback(
@@ -93,6 +92,7 @@ def update_pnl(n_clicks_gain, n_clicks_loss, gain, loss, data):
         if button_id == 'btn-gain':
             data['pnl'] += gain
             data['trades'] += 1
+            data['wins'] += 1
         elif button_id == 'btn-loss':
             data['pnl'] -= loss
             data['trades'] += 1
@@ -111,36 +111,15 @@ def update_pnl(n_clicks_gain, n_clicks_loss, gain, loss, data):
 # update winrate
 @app.callback(
     Output('winrate', 'children'),
-    [Input('btn-gain', 'n_clicks'),
-     Input('btn-loss', 'n_clicks')],
-    [State('winrate', 'children')]
+    [Input('store', 'data')],
 )
 
-def update_winrate(n_clicks_gain, n_clicks_loss, winrate):
-    ctx = dash.callback_context
-    if not ctx.triggered:
+def update_winrate(data):
+    if data['trades'] == 0:
         return "Win Rate: 0%"
     else:
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        total_trades = n_clicks_gain + n_clicks_loss
-        wins = n_clicks_gain
-        winrate = (wins / total_trades) * 100
+        winrate = (data['wins'] / data['trades']) * 100
         return f"Win Rate: {winrate:.2f}%"
     
-@app.callback(
-    Output('total_trades', 'children'),
-    [Input('btn-gain', 'n_clicks'),
-     Input('btn-loss', 'n_clicks')],
-    [State('winrate', 'children')]
-)
-def update_total(n_clicks_gain, n_clicks_loss, winrate):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return "Total trades: 0"
-    else:
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        total_trades = n_clicks_gain + n_clicks_loss
-        return f"Total trades: {total_trades}"
-
 if __name__ == '__main__':
     app.run_server(debug=True, host='127.0.0.1', port=8080)
