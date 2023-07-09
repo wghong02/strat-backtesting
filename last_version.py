@@ -5,6 +5,8 @@ from dash.dependencies import Input, Output, State
 import pandas as pd
 import os
 
+import functions
+
 app = dash.Dash(
     __name__, meta_tags=[{"name": "viewport", "content": "width=device-width"}], suppress_callback_exceptions=True,
 )
@@ -21,11 +23,11 @@ app.layout = html.Div([
         html.Button('History', id='option-3', n_clicks=0),
     ], style={'width': '20%', 'display': 'inline-block', 'vertical-align': 'top'}),
     html.Div(id='content', style={'width': '80%', 'display': 'inline-block'}),
-    dcc.Store(id='store-add', data={'pnl': 0, 'trades': 0, 'wins': 0}),
-    dcc.Store(id='store-update', data={'pnl': 0, 'trades': 0, 'wins': 0}),
+    dcc.Store(id='store-wins', data=0),
+    dcc.Store(id='store-losses', data=0),
     dcc.ConfirmDialog(
         id='error-message',
-        message='Gain must be greater than 0 and Loss must be non-negative.',
+        message='Gain and Loss must be non-negative.',
     ),
 ], className='default')
 
@@ -52,12 +54,14 @@ def update_content(option1, option2, option3):
             return f"You selected {option_id}"
 
 # to add new strategies
+# Callback to add new strategies
 @app.callback(
     Output('strategy-content', 'children'),
     [Input('add-strategy', 'n_clicks')]
 )
 def add_strategy(n_clicks):
     if n_clicks > 0:
+        functions.reset_csv_file()
         return [
             html.Div([
                 html.Div('Gain', style={'color': 'green'}),
@@ -71,37 +75,42 @@ def add_strategy(n_clicks):
             ]),
             html.Div(id='pnl', children='PnL: 0'),
             html.Div(id='winrate', children='Win Rate: 0%'),
+            html.Div(id='wl-count', children='W/L: 0/0'),
             dcc.Graph(id='pnl-graph', config={'displayModeBar': True, 'scrollZoom': True})
         ]
 
-# update pnl and wr
+# Update PnL and W/L
 @app.callback(
-    [Output('pnl', 'children'), Output('pnl-graph', 'figure'), Output('winrate', 'children')],
+    [Output('pnl', 'children'), Output('pnl-graph', 'figure'), Output('winrate', 'children'), Output('wl-count', 'children'), Output('error-message', 'displayed'), Output('store-wins', 'data'), Output('store-losses', 'data')],
     [Input('btn-gain', 'n_clicks'),
      Input('btn-loss', 'n_clicks')],
     [State('input-gain', 'value'),
      State('input-loss', 'value'),
      State('pnl', 'children'),
      State('winrate', 'children'),
-     State('pnl-graph', 'figure')]
+     State('pnl-graph', 'figure'),
+     State('store-wins', 'data'),
+     State('store-losses', 'data')]
 )
-def update_pnl_and_winrate(n_clicks_gain, n_clicks_loss, gain, loss, pnl, winrate, figure):
+def update_pnl_and_winrate(n_clicks_gain, n_clicks_loss, gain, loss, pnl, winrate, figure, wins, losses):
     ctx = dash.callback_context
     if not ctx.triggered:
-        pnl_history = pd.DataFrame({'PnL': [0]})
+        pnl_history = pd.DataFrame({'PnL': []})  # Empty DataFrame
         pnl_history.to_csv('pnl_history.csv', index=False)
-        return "PnL: 0", {'data': [], 'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}}, "Win Rate: 0%"
+        return "PnL: 0", figure, "Win Rate: 0%", "W/L: 0/0", False, wins, losses
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         current_pnl = int(pnl.split(': ')[1])
         if button_id == 'btn-gain':
-            if gain <= 0:
-                return pnl, figure, winrate
+            if gain < 0:
+                return pnl, figure, winrate, dash.no_update, True, wins, losses
             new_pnl = current_pnl + gain
+            wins += 1
         elif button_id == 'btn-loss':
             if loss < 0:
-                return pnl, figure, winrate
+                return pnl, figure, winrate, dash.no_update, True, wins, losses
             new_pnl = current_pnl - loss
+            losses += 1
         if os.path.exists('pnl_history.csv'):
             pnl_history = pd.read_csv('pnl_history.csv')
             new_row = pd.DataFrame({'PnL': [new_pnl]})
@@ -109,37 +118,12 @@ def update_pnl_and_winrate(n_clicks_gain, n_clicks_loss, gain, loss, pnl, winrat
         else:
             pnl_history = pd.DataFrame({'PnL': [new_pnl]})
         pnl_history.to_csv('pnl_history.csv', index=False)
-        
-        total_trades = n_clicks_gain + n_clicks_loss
-        wins = n_clicks_gain
-        winrate = (wins / total_trades) * 100
 
-        return f"PnL: {new_pnl}", {
-            'data': [{'x': pnl_history.index, 'y': pnl_history['PnL'], 'type': 'scatter', 'mode': 'lines+markers'}],
-            'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}
-        }, f"Win Rate: {winrate:.2f}%"
+        total_trades = wins + losses
+        winrate = (wins / total_trades) * 100 if total_trades > 0 else 0
+        wl_count = f"W/L: {wins}/{losses}"
 
-# error message
-@app.callback(
-    Output('error-message', 'displayed'),
-    [Input('btn-gain', 'n_clicks'),
-     Input('btn-loss', 'n_clicks')],
-    [State('input-gain', 'value'),
-     State('input-loss', 'value')]
-)
-def display_error_message(n_clicks_gain, n_clicks_loss, gain, loss):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return False
-    else:
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        if button_id == 'btn-gain' and n_clicks_gain > 0 and gain <= 0:
-            return True
-        elif button_id == 'btn-loss' and n_clicks_loss > 0 and loss < 0:
-            return True
-        else:
-            return False
+        return f"PnL: {new_pnl}", figure, f"Win Rate: {winrate:.2f}%", wl_count, False, wins, losses
 
-    
 if __name__ == '__main__':
     app.run_server(debug=True, host='127.0.0.1', port=8080)
