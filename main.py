@@ -16,32 +16,33 @@ server = app.server
 app.layout = html.Div([
     html.H1("Backtesting Tracker"),
     html.Div([
-        html.Button('Home', id='btn-1', n_clicks=0),
-        html.Button('Strategies', id='btn-2', n_clicks=0),
-        html.Button('History', id='btn-3', n_clicks=0),
+        html.Button('Home', id='option-1', n_clicks=0),
+        html.Button('Strategies', id='option-2', n_clicks=0),
+        html.Button('History', id='option-3', n_clicks=0),
     ], style={'width': '20%', 'display': 'inline-block', 'vertical-align': 'top'}),
-    html.Div(id='content', style={'width': '80%', 'display': 'inline-block'})
+    html.Div(id='content', style={'width': '80%', 'display': 'inline-block'}),
+    dcc.Store(id='store', data={'pnl': 0, 'trades': 0})
 ])
 
 @app.callback(
     Output('content', 'children'),
-    [Input('btn-1', 'n_clicks'),
-     Input('btn-2', 'n_clicks'),
-     Input('btn-3', 'n_clicks')]
+    [Input('option-1', 'n_clicks'),
+     Input('option-2', 'n_clicks'),
+     Input('option-3', 'n_clicks')]
 )
-def update_content(btn1, btn2, btn3):
+def update_content(option1, option2, option3):
     ctx = dash.callback_context
     if not ctx.triggered:
         return "Select an option"
     else:
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        if button_id == 'btn-2':
+        option_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        if option_id == 'option-2':
             return [
                 html.Button('Add New Strategy', id='add-strategy', n_clicks=0),
                 html.Div(id='strategy-content')
             ]
         else:
-            return f"You selected {button_id}"
+            return f"You selected {option_id}"
 
 @app.callback(
     Output('strategy-content', 'children'),
