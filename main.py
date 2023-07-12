@@ -75,6 +75,11 @@ def add_strategy(n_clicks):
                 dcc.Input(id='input-loss', type='number', value=0),
                 html.Button('- Loss', id='btn-loss', n_clicks=0)
             ]),
+             html.Div([
+                html.Div('Strategy Name'),
+                dcc.Input(id='input-strategy-name', type='text', value=''),
+                html.Button('Save Strategy', id='btn-save-strategy', n_clicks=0)
+            ]),
             html.Div(id='pnl', children='PnL: 0'),
             html.Div(id='winrate', children='Win Rate: 0%'),
             dcc.Graph(id='pnl-graph', config={'displayModeBar': True, 'scrollZoom': True})
@@ -149,6 +154,24 @@ def display_error_message(n_clicks_gain, n_clicks_loss, gain, loss):
             return True
         else:
             return False
+        
+# Save strategy
+@app.callback(
+    Output('strategy-tabs', 'children'),
+    [Input('btn-save-strategy', 'n_clicks')],
+    [State('input-strategy-name', 'value'),
+     State('pnl-graph', 'figure')]
+)
+def save_strategy(n_clicks, strategy_name, figure):
+    if n_clicks > 0 and strategy_name:
+        # Save the strategy data to a CSV file
+        pnl_history = pd.DataFrame(figure['data'][0]['y'], columns=['PnL'])
+        pnl_history.to_csv(f'{strategy_name}.csv', index=False)
+
+        # Add a new tab for the strategy
+        return dcc.Tabs(id='strategy-tabs', children=[
+            dcc.Tab(label=strategy_name, value=strategy_name)
+        ])
 
     
 if __name__ == '__main__':
