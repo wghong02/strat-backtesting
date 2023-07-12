@@ -52,12 +52,18 @@ def update_content(option1, option2, option3):
             return f"You selected {option_id}"
 
 # to add new strategies
+valid_gains = 0
+valid_losses = 0
+
 @app.callback(
     Output('strategy-content', 'children'),
     [Input('add-strategy', 'n_clicks')]
 )
 def add_strategy(n_clicks):
+    global valid_gains, valid_losses  # use the global variables
     if n_clicks > 0:
+        valid_gains = 0  # reset valid_gains
+        valid_losses = 0  # reset valid_losses
         return [
             html.Div([
                 html.Div('Gain', style={'color': 'green'}),
@@ -74,7 +80,9 @@ def add_strategy(n_clicks):
             dcc.Graph(id='pnl-graph', config={'displayModeBar': True, 'scrollZoom': True})
         ]
 
+
 # update pnl and wr
+
 @app.callback(
     [Output('pnl', 'children'), Output('pnl-graph', 'figure'), Output('winrate', 'children')],
     [Input('btn-gain', 'n_clicks'),
@@ -86,6 +94,7 @@ def add_strategy(n_clicks):
      State('pnl-graph', 'figure')]
 )
 def update_pnl_and_winrate(n_clicks_gain, n_clicks_loss, gain, loss, pnl, winrate, figure):
+    global valid_gains, valid_losses  # use the global variables
     ctx = dash.callback_context
     if not ctx.triggered:
         pnl_history = pd.DataFrame({'PnL': [0]})
@@ -98,10 +107,12 @@ def update_pnl_and_winrate(n_clicks_gain, n_clicks_loss, gain, loss, pnl, winrat
             if gain <= 0:
                 return pnl, figure, winrate
             new_pnl = current_pnl + gain
+            valid_gains += 1  # increment valid_gains
         elif button_id == 'btn-loss':
             if loss < 0:
                 return pnl, figure, winrate
             new_pnl = current_pnl - loss
+            valid_losses += 1  # increment valid_losses
         if os.path.exists('pnl_history.csv'):
             pnl_history = pd.read_csv('pnl_history.csv')
             new_row = pd.DataFrame({'PnL': [new_pnl]})
@@ -110,15 +121,14 @@ def update_pnl_and_winrate(n_clicks_gain, n_clicks_loss, gain, loss, pnl, winrat
             pnl_history = pd.DataFrame({'PnL': [new_pnl]})
         pnl_history.to_csv('pnl_history.csv', index=False)
         
-        total_trades = n_clicks_gain + n_clicks_loss
-        wins = n_clicks_gain
-        winrate = (wins / total_trades) * 100
+        total_trades = valid_gains + valid_losses  # use valid_gains and valid_losses
+        wins = valid_gains
+        winrate = (wins / total_trades) * 100 if total_trades > 0 else 0  # handle division by zero
 
         return f"PnL: {new_pnl}", {
             'data': [{'x': pnl_history.index, 'y': pnl_history['PnL'], 'type': 'scatter', 'mode': 'lines+markers'}],
             'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}
         }, f"Win Rate: {winrate:.2f}%"
-
 # error message
 @app.callback(
     Output('error-message', 'displayed'),
