@@ -27,6 +27,7 @@ app.layout = html.Div([
         id='error-message',
         message='Gain must be greater than 0 and Loss must be non-negative.',
     ),
+    dcc.Tabs(id='strategy-tabs'),  # Add this line
 ], className='default')
 
 # click on menu options
@@ -34,10 +35,10 @@ app.layout = html.Div([
     Output('content', 'children'),
     [Input('option-1', 'n_clicks'),
      Input('option-2', 'n_clicks'),
-     Input('option-3', 'n_clicks')]
+     Input('option-3', 'n_clicks'),
+     Input('strategy-tabs', 'value')]
 )
-
-def update_content(option1, option2, option3):
+def update_content(option1, option2, option3, strategy_name):
     ctx = dash.callback_context
     if not ctx.triggered:
         return "Select an option"
@@ -48,6 +49,17 @@ def update_content(option1, option2, option3):
                 html.Button('Add New Strategy', id='add-strategy', n_clicks=0),
                 html.Div(id='strategy-content')
             ]
+        elif option_id == 'strategy-tabs':
+            # Check if the file exists before trying to read it
+            if os.path.exists(f'{strategy_name}.csv'):
+                # Load the strategy data from the CSV file
+                pnl_history = pd.read_csv(f'{strategy_name}.csv')
+                return {
+                    'data': [{'x': pnl_history.index, 'y': pnl_history['PnL'], 'type': 'scatter', 'mode': 'lines+markers'}],
+                    'layout': {'title': 'PnL over Time', 'xaxis': {'title': 'Number of Trades'}, 'yaxis': {'title': 'PnL', 'autorange': True}}
+                }
+            else:
+                return f"No data found for {strategy_name}"
         else:
             return f"You selected {option_id}"
 
